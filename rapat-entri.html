@@ -1,0 +1,317 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Hadir Rapat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2E7D32; /* Green Madrasah */
+            --primary-hover: #1B5E20;
+            --success-color: #198754;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-dark: #212529;
+            --text-light: #6c757d;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .formal-header {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .formal-header .logo {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+        }
+        .formal-header .titles {
+            text-align: center;
+            flex-grow: 1;
+        }
+        .formal-header h2, .formal-header h3, .formal-header p {
+            margin: 0;
+            color: var(--primary-color);
+        }
+        .formal-header h2 { font-size: 1.2em; font-weight: bold; }
+        .formal-header h3 { font-size: 1.6em; font-weight: bold; }
+        .formal-header p { font-size: 0.8em; color: var(--text-dark); }
+        .content-body {
+            padding: 25px 30px;
+        }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { color: var(--primary-color); margin: 0; }
+        .header p { color: var(--text-light); margin-top: 5px; }
+        .card {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; color: var(--primary-color);}
+        .form-group { margin-bottom: 15px; position: relative; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 5px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover:not(:disabled) { opacity: 0.85; }
+        .btn:disabled { cursor: not-allowed; opacity: 0.7; }
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-success { background-color: var(--success-color); }
+        .btn-secondary { background-color: var(--text-light); }
+        #attendance-form, #attendee-list-card {
+            opacity: 0.5;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #attendance-form.active, #attendee-list-card.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #signature-preview-container {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+        #signature-preview {
+            max-width: 100%;
+            height: auto;
+            max-height: 120px;
+            display: none;
+        }
+        #attendee-list { list-style-type: decimal; padding-left: 20px; }
+        #attendee-list li { padding: 5px 0; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 1050; }
+        .toast {
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            transform: translateY(-20px);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-success { background-color: var(--success-color); }
+        .toast-error { background-color: #dc3545; }
+        .nav-link { text-align: center; margin-top: 20px; }
+        .nav-link a { text-decoration: none; color: var(--primary-color); font-weight: 500; }
+        
+        /* Autocomplete styles */
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 100;
+            padding: 0;
+            margin: 0;
+            list-style-type: none;
+            display: none; /* Hidden by default */
+        }
+        .autocomplete-suggestions li {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestions li:hover, .autocomplete-suggestions li.active {
+            background-color: var(--light-bg);
+        }
+
+        /* Signature Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.2em;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modal-body {
+            flex-grow: 1;
+            margin: 15px 0;
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            position: relative;
+        }
+        #signature-modal-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="formal-header">
+            <img src="https://mia02sgs.sch.id/jadwal/logoypa.png" alt="Logo YPA" class="logo">
+            <div class="titles">
+                <h2>YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</h2>
+                <h3>MADRASAH IBTIDAIYAH ALMAARIF 02</h3>
+                <p>Jl. Masjid 33, Telp. (0341) 451542 Singosari Malang 65153</p>
+            </div>
+        </div>
+        <div class="content-body">
+            <div class="header">
+                <h1 id="app-header-title"><i class="fas fa-clipboard-list"></i> Daftar Hadir Rapat</h1>
+                <p>Silakan buat rapat baru atau pilih rapat yang sedang berlangsung.</p>
+            </div>
+
+            <div class="card" id="meeting-selection-card">
+                <h3><i class="fas fa-calendar-check"></i> 1. Pilih atau Buat Rapat</h3>
+                <div class="form-group">
+                    <label for="active-meeting-select">Pilih Rapat Aktif (Draft)</label>
+                    <select id="active-meeting-select">
+                        <option value="">-- Memuat Rapat --</option>
+                    </select>
+                </div>
+                <p style="text-align: center; margin: 10px 0;">Atau</p>
+                <button class="btn btn-primary" id="create-meeting-btn" style="width: 100%;"><i class="fas fa-plus"></i> Buat Rapat Baru</button>
+            </div>
+
+            <div class="card" id="attendance-form">
+                <h3 id="attendance-form-title"><i class="fas fa-user-edit"></i> 2. Isi Kehadiran</h3>
+                <div class="form-group">
+                    <input type="checkbox" id="manual-name-toggle">
+                    <label for="manual-name-toggle">Isi nama manual (jika tidak ada di daftar)</label>
+                </div>
+                <div class="form-group" id="guru-select-group">
+                    <label for="guru-input">Nama Peserta (dari daftar)</label>
+                    <input type="text" id="guru-input" placeholder="Ketik nama untuk mencari..." autocomplete="off">
+                    <ul id="guru-suggestions" class="autocomplete-suggestions"></ul>
+                </div>
+                <div class="form-group" id="manual-name-group" style="display: none;">
+                    <label for="manual-name-input">Nama Peserta (manual)</label>
+                    <input type="text" id="manual-name-input" placeholder="Ketik nama lengkap...">
+                </div>
+                <div class="form-group">
+                    <label>Tanda Tangan</label>
+                    <button type="button" class="btn btn-primary" id="open-signature-modal-btn" style="width: 100%;"><i class="fas fa-pencil-alt"></i> Beri Tanda Tangan</button>
+                    <div id="signature-preview-container">
+                        <img id="signature-preview" alt="Pratinjau Tanda Tangan">
+                    </div>
+                </div>
+                <button class="btn btn-success" id="submit-attendance-btn" style="width: 100%;"><i class="fas fa-paper-plane"></i> Kirim Kehadiran</button>
+            </div>
+            
+            <div class="card" id="attendee-list-card">
+                <h3 id="attendee-list-title"><i class="fas fa-users"></i> 3. Peserta yang Sudah Hadir</h3>
+                <ul id="attendee-list">
+                    <li>Belum ada peserta yang hadir.</li>
+                </ul>
+            </div>
+            
+            <div class="nav-link">
+                <a href="rapat-rekap.html"><i class="fas fa-history"></i> Lihat Rekapitulasi Semua Rapat</a>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Signature Modal -->
+    <div id="signature-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">Silakan bubuhkan tanda tangan di area bawah</div>
+            <div class="modal-body">
+                <canvas id="signature-modal-canvas"></canvas>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="clear-modal-signature-btn"><i class="fas fa-eraser"></i> Ulangi</button>
+                <button class="btn btn-success" id="save-signature-btn"><i class="fas fa-save"></i> Simpan Tanda Tangan</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="rapat-script.js"></script>
+</body>
+</html>
