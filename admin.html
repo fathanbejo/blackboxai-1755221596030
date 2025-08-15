@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan & Manajemen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="global.css">
+    <style>
+        .header-line-controls { display: grid; grid-template-columns: 1fr 80px 80px; gap: 10px; align-items: flex-end; margin-bottom: 15px; }
+        .header-line-controls .main-input { grid-column: 1 / 2; }
+        .header-line-controls .size-input { grid-column: 2 / 3; }
+        .header-line-controls .color-input { grid-column: 3 / 4; }
+        .header-line-controls label { grid-column: 1 / -1; margin-bottom: 2px; }
+        .form-group .field-note { font-size: 0.8em; color: var(--text-light); margin-top: -10px; margin-bottom: 8px; }
+        
+        /* User Management Styles */
+        #user-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        #user-table th, #user-table td { padding: 10px; border: 1px solid var(--border-color); text-align: left; }
+        #user-table th { background-color: #f8f9fa; }
+        .user-actions button { background: none; border: none; cursor: pointer; font-size: 1.1em; padding: 5px; }
+        .edit-user-btn { color: var(--secondary-color); }
+        .delete-user-btn { color: var(--danger-color); }
+        .role-badge { padding: 3px 8px; border-radius: 12px; color: white; font-size: 0.8em; }
+        .role-admin { background-color: #dc3545; }
+        .role-operator { background-color: #0d6efd; }
+        .role-user { background-color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h1><i class="fas fa-cogs"></i> Pengaturan Global & Manajemen</h1>
+
+        <!-- Existing Sections ... -->
+        <div class="form-section">
+            <details open>
+                <summary><h2><i class="fas fa-file-invoice"></i> Pengaturan Kop Surat PDF</h2></summary>
+                <div style="padding-top: 15px;">
+                     <div class="header-line-controls">
+                        <label for="header-line-1">Baris 1 (Nama Yayasan)</label>
+                        <p class="field-note">Ukuran Default: 14pt, Bold</p>
+                        <div class="form-group main-input"><input type="text" id="header-line-1"></div>
+                        <div class="form-group size-input"><input type="number" id="header-line-1-size" placeholder="14"></div>
+                        <div class="form-group color-input"><input type="color" id="header-line-1-color"></div>
+                    </div>
+                    <div class="header-line-controls">
+                        <label for="header-line-2">Baris 2 (SK Menkumham)</label>
+                        <p class="field-note">Ukuran Default: 8pt</p>
+                        <div class="form-group main-input"><input type="text" id="header-line-2"></div>
+                        <div class="form-group size-input"><input type="number" id="header-line-2-size" placeholder="8"></div>
+                        <div class="form-group color-input"><input type="color" id="header-line-2-color"></div>
+                    </div>
+                     <div class="header-line-controls">
+                        <label for="header-line-3">Baris 3 (Nama Madrasah)</label>
+                        <p class="field-note">Ukuran Default: 20pt, Bold</p>
+                        <div class="form-group main-input"><input type="text" id="header-line-3"></div>
+                        <div class="form-group size-input"><input type="number" id="header-line-3-size" placeholder="20"></div>
+                        <div class="form-group color-input"><input type="color" id="header-line-3-color"></div>
+                    </div>
+                    <div class="header-line-controls">
+                        <label for="header-line-4">Baris 4 (Akreditasi)</label>
+                        <p class="field-note">Ukuran Default: 16pt, Bold</p>
+                        <div class="form-group main-input"><input type="text" id="header-line-4"></div>
+                        <div class="form-group size-input"><input type="number" id="header-line-4-size" placeholder="16"></div>
+                        <div class="form-group color-input"><input type="color" id="header-line-4-color"></div>
+                    </div>
+                    <div class="header-line-controls">
+                        <label for="header-line-5">Baris 5 (Alamat & Kontak)</label>
+                        <p class="field-note">Ukuran Default: 9pt</p>
+                        <div class="form-group main-input"><input type="text" id="header-line-5"></div>
+                        <div class="form-group size-input"><input type="number" id="header-line-5-size" placeholder="9"></div>
+                        <div class="form-group color-input"><input type="color" id="header-line-5-color"></div>
+                    </div>
+                    <div class="header-line-controls">
+                        <label for="header-line-6">Baris 6 (Website & Email)</label>
+                        <p class="field-note">Ukuran Default: 9pt</p>
+                        <div class="form-group main-input"><input type="text" id="header-line-6"></div>
+                        <div class="form-group size-input"><input type="number" id="header-line-6-size" placeholder="9"></div>
+                        <div class="form-group color-input"><input type="color" id="header-line-6-color"></div>
+                    </div>
+                </div>
+            </details>
+        </div>
+        <div class="form-section">
+            <h2><i class="fas fa-palette"></i> Branding & Tampilan</h2>
+            <div class="form-group">
+                <label for="logo-upload">Logo Sekolah</label>
+                <input type="file" id="logo-upload" accept="image/png, image/jpeg">
+                <img id="logo-preview" class="logo-preview" src="https://mia02sgs.sch.id/wp-content/uploads/2024/01/cropped-Tagline-1.png" alt="Pratinjau Logo">
+            </div>
+            <div class="form-group">
+                <label for="dashboard-title">Judul Utama Dasbor</label>
+                <input type="text" id="dashboard-title" placeholder="Contoh: Suite Aplikasi Administrasi">
+            </div>
+            <div class="form-group">
+                <label for="dashboard-subtitle">Subjudul Dasbor</label>
+                <input type="text" id="dashboard-subtitle" placeholder="Contoh: MI ALMAARIF 02 SINGOSARI">
+            </div>
+        </div>
+        <div class="form-section">
+            <h2><i class="fas fa-heading"></i> Pengaturan Header Aplikasi HTML</h2>
+             <div class="form-group"><label for="izin-form-title">Judul Form Izin</label><input type="text" id="izin-form-title" placeholder="MI ALMAARIF 02"></div>
+            <div class="form-group"><label for="izin-form-subtitle">Subjudul Form Izin</label><input type="text" id="izin-form-subtitle" placeholder="Formulir Izin"></div>
+             <div class="form-group"><label for="izin-dasbor-title">Judul Dasbor Izin</label><input type="text" id="izin-dasbor-title" placeholder="Dasbor Absensi MIA02"></div>
+             <div class="form-group"><label for="rapat-form-title">Judul Form Rapat</label><input type="text" id="rapat-form-title" placeholder="Daftar Hadir Rapat"></div>
+        </div>
+        <div class="admin-actions">
+            <button id="save-settings-btn" class="btn-save"><i class="fas fa-save"></i> Simpan Pengaturan Global <span id="save-spinner" class="spinner" style="display: none;"></span></button>
+        </div>
+
+        <!-- NEW User Management Section -->
+        <div class="form-section" id="user-management-section">
+            <h2><i class="fas fa-users-cog"></i> Manajemen Pengguna</h2>
+            <form id="user-form" style="margin-bottom: 20px;">
+                <input type="hidden" id="user-id">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group"><label for="user-username">Username</label><input type="text" id="user-username" required></div>
+                    <div class="form-group"><label for="user-nama-lengkap">Nama Lengkap</label><input type="text" id="user-nama-lengkap" required></div>
+                    <div class="form-group"><label for="user-password">Password</label><input type="password" id="user-password" placeholder="Isi untuk mengubah/membuat"><small>Kosongkan jika tidak ingin mengubah password.</small></div>
+                    <div class="form-group"><label for="user-role">Peran (Role)</label><select id="user-role"><option value="operator">Operator</option><option value="admin">Admin</option></select></div>
+                </div>
+                <div class="admin-actions">
+                    <button type="submit" id="save-user-btn" class="btn-save" style="background-color: var(--primary-color);">
+                        <i class="fas fa-plus-circle"></i> Tambah Pengguna
+                    </button>
+                    <button type="button" id="cancel-edit-btn" class="btn-save" style="background-color: #6c757d; display: none;">Batal Edit</button>
+                </div>
+            </form>
+            <table id="user-table">
+                <thead><tr><th>Username</th><th>Nama Lengkap</th><th>Peran</th><th>Aksi</th></tr></thead>
+                <tbody id="user-table-body">
+                    <tr><td colspan="4" style="text-align: center;">Memuat pengguna...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+         <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">&laquo; Kembali ke Dasbor Utama</a>
+        </div>
+    </div>
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
