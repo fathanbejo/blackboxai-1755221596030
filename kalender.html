@@ -1,0 +1,349 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kalender Sekolah</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+        --primary-green: #2E7D32;
+        --primary-green-dark: #1B5E20;
+        --light-green-bg: rgba(46, 125, 50, 0.08);
+        --primary-text: #28354E;
+        --secondary-text: #8A92A6;
+        --primary-bg: #FFFFFF;
+        --secondary-bg: #F8F9FA;
+        --border-color: #E9ECEF;
+        --sunday-color: #E53935;
+        --holiday-bg: #FEE2E2;
+        --holiday-text: #DC2626;
+        --shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+    body {
+      font-family: 'Poppins', Arial, sans-serif;
+      background-color: var(--secondary-bg);
+      color: var(--primary-text);
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .header .header-img {
+      margin-bottom: 10px;
+    }
+    .header .header-img img {
+      width: 150px;
+      height: auto;
+    }
+    .header h1 {
+        font-size: 1.8em;
+        font-weight: 600;
+        color: var(--primary-green);
+        margin: 0 0 5px 0;
+    }
+    .header p {
+      color: #555;
+      margin: 0;
+      font-size: 1.1em;
+    }
+     .nav-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .nav-button {
+      padding: 10px 20px;
+      background-color: var(--primary-green);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: background-color 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-button:hover { background-color: var(--primary-green-dark); }
+
+    /* Calendar Styles */
+    .calendar-container {
+        background-color: var(--primary-bg);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .calendar-header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 20px 25px;
+        background-color: var(--primary-green);
+        color: white;
+    }
+    #month-year-display { 
+        font-size: 1.4em; 
+        font-weight: 600; 
+        text-align: center;
+        flex-grow: 1;
+    }
+    .calendar-nav-btn { 
+        background: none; 
+        border: none; 
+        color: white;
+        opacity: 0.8;
+        border-radius: 50%; 
+        width: 38px;
+        height: 38px; 
+        cursor: pointer; 
+        font-size: 1em; 
+        transition: background-color 0.2s, opacity 0.2s;
+    }
+    .calendar-nav-btn:hover { 
+        background-color: rgba(255,255,255,0.1);
+        opacity: 1;
+    }
+    .calendar-body {
+        padding: 15px;
+    }
+    .calendar-grid { 
+        display: grid; 
+        grid-template-columns: repeat(7, 1fr); 
+        gap: 1px;
+        background-color: var(--border-color);
+        border: 1px solid var(--border-color);
+    }
+    .day-name, .day-cell {
+        background-color: var(--primary-bg);
+        text-align: center;
+        padding: 5px;
+    }
+    .day-name { 
+        font-weight: 600; 
+        font-size: 0.8em; 
+        padding-bottom: 5px;
+        color: var(--secondary-text);
+    }
+    .day-name.sunday { color: var(--sunday-color); }
+    .day-cell { 
+        min-height: 60px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.9em;
+        transition: background-color 0.2s;
+        position: relative;
+    }
+    .day-cell.interactive { cursor: pointer; }
+    .day-cell.interactive:hover { background-color: var(--light-green-bg); }
+    .day-number {
+        font-weight: 500;
+        font-size: 1em;
+        width: 2.2em;
+        height: 2.2em;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        transition: all 0.2s ease-in-out;
+    }
+    .day-cell.not-current-month .day-number { color: #d1d5db; }
+    .day-cell.sunday .day-number { color: var(--sunday-color); }
+    .day-cell.today .day-number {
+        border: 2px solid var(--primary-green);
+    }
+    .day-cell.holiday { background-color: var(--holiday-bg); }
+    .day-cell.holiday .day-number { color: var(--holiday-text); font-weight: 600; }
+    .day-cell.agenda {
+        background-color: var(--light-green-bg);
+    }
+    .day-cell.agenda .day-number {
+        font-weight: 600;
+    }
+    
+    .holiday-list-container {
+        padding: 20px;
+        border-top: 1px solid var(--border-color);
+    }
+    .holiday-list-header {
+        background-color: var(--primary-green);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 600;
+        margin: 0;
+    }
+    #calendar-events-list { 
+        margin-top: 15px;
+        font-size: 0.95em;
+    }
+    .event-item { 
+        display: flex; 
+        gap: 15px; 
+        padding: 10px; 
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+    }
+    .event-item:last-child { border-bottom: none; }
+    .event-item .event-date { font-weight: 600; width: 110px; }
+    .event-item .event-desc { flex: 1; }
+    .event-item.holiday .event-date { color: var(--holiday-text); }
+    .event-item.agenda .event-date { color: var(--primary-green); }
+    .event-actions { margin-left: auto; display: flex; gap: 5px;}
+    .action-btn-icon { background: none; border: none; cursor: pointer; font-size: 1em; padding: 5px; border-radius: 4px; transition: background-color 0.2s; }
+    .action-btn-icon.edit-btn { color: #0d6efd; }
+    .action-btn-icon.edit-btn:hover { background-color: #e7f1ff; }
+    .action-btn-icon.delete-btn { color: #ef4444; }
+    .action-btn-icon.delete-btn:hover { background-color: #fee2e2; }
+
+    .admin-controls { display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+    #admin-login-btn { background: none; border: none; font-size: 1.8em; cursor: pointer; color: #64748b; transition: color 0.2s; }
+    #admin-login-btn:hover { color: #334155; }
+    #admin-panel { display: none; width: 100%; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding-top: 15px; margin-top: 15px; border-top: 2px solid var(--primary-green); }
+    .admin-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .admin-card h4 { margin-top: 0; display: flex; align-items: center; gap: 8px; color: var(--primary-green); }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; margin-bottom: 5px; font-size: 0.9em; }
+    input[type="text"], input[type="date"], input[type="file"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+    .action-btn { width: auto; margin-top: 10px; background-color: var(--primary-green); padding: 8px 15px; font-size: 0.9em; border: none; border-radius: 6px; color: white; cursor: pointer; transition: background-color 0.2s; }
+    .action-btn:hover { background-color: var(--primary-green-dark); }
+    .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content { background-color: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+    .modal-header h4 { margin: 0; font-size: 1.2em; color: var(--primary-text); }
+    #modal-close-btn { background: none; border: none; font-size: 1.5em; cursor: pointer; color: #888; }
+    #modal-event-list .event-item { font-size: 1em; padding-left: 0; padding-right: 0;}
+    #modal-event-list .event-item i { margin-right: 10px; width: 20px; text-align: center; }
+    #modal-event-list .event-item.holiday { color: var(--holiday-text); }
+    #modal-event-list .event-item.agenda { color: var(--primary-green); }
+
+    #modal-attachment-list { margin-top: 15px; }
+    #modal-attachment-list h5 { margin: 0 0 10px 0; font-size: 1em; color: var(--primary-text); }
+    .attachment-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 0.9em; }
+    .attachment-item a { color: #0d6efd; text-decoration: none; }
+    .attachment-item a:hover { text-decoration: underline; }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .calendar-body { padding: 10px; }
+        .day-cell { min-height: 50px; font-size: 0.9em; }
+        .day-number { font-size: 1em; }
+        #month-year-display { font-size: 1.2em; }
+        .calendar-nav-btn { width: 35px; height: 35px; }
+    }
+    @media (max-width: 480px) {
+        body { padding: 10px; }
+        .calendar-body { padding: 5px; }
+        .day-cell { min-height: 40px; padding: 4px; }
+        .day-number { font-size: 0.9em; }
+        .day-name { font-size: 0.7em; }
+        .header h1 { font-size: 1.5em; }
+        .header p { font-size: 1em; }
+        #month-year-display { font-size: 1em; }
+        .calendar-header { padding: 15px; }
+        .holiday-list-container { padding: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-img">
+        <img src="https://mia02sgs.sch.id/wp-content/uploads/2024/01/cropped-Tagline-1.png" alt="Logo Sekolah">
+      </div>
+      <h1>MI ALMAARIF 02</h1>
+      <p>Agenda dan Kalender Pendidikan</p>
+    </div>
+    
+    <!-- Calendar App -->
+    <div id="calendar-app" class="calendar-container">
+      <div class="calendar-header">
+        <button id="prev-year-btn" class="calendar-nav-btn" aria-label="Tahun Sebelumnya"><i class="fas fa-angle-double-left"></i></button>
+        <button id="prev-month-btn" class="calendar-nav-btn" aria-label="Bulan Sebelumnya"><i class="fas fa-angle-left"></i></button>
+        <h3 id="month-year-display"></h3>
+        <button id="goto-today-btn" class="calendar-nav-btn" aria-label="Loncat ke Hari Ini" title="Loncat ke Hari Ini"><i class="fas fa-calendar-day"></i></button>
+        <button id="next-month-btn" class="calendar-nav-btn" aria-label="Bulan Berikutnya"><i class="fas fa-angle-right"></i></button>
+        <button id="next-year-btn" class="calendar-nav-btn" aria-label="Tahun Berikutnya"><i class="fas fa-angle-double-right"></i></button>
+      </div>
+      <div class="calendar-body">
+        <div class="calendar-grid" id="calendar-weekdays-grid"></div>
+        <div class="calendar-grid" id="calendar-days-grid"></div>
+      </div>
+      <div class="holiday-list-container">
+        <h4 class="holiday-list-header"><i class="fas fa-info-circle"></i> Hari Libur & Agenda Bulan Ini</h4>
+        <div id="calendar-events-list"></div>
+      </div>
+    </div>
+    
+    <div class="admin-controls">
+      <div class="nav-buttons">
+          <a href="izin.html" class="nav-button"><i class="fas fa-edit"></i> Formulir Izin</a>
+          <a href="kaldik.html" class="nav-button" style="background-color: #0d9488;"><i class="fas fa-table"></i> Tampilan Tabel</a>
+      </div>
+      <button id="admin-login-btn" title="Login Admin"><i class="fas fa-lock"></i></button>
+      <div id="admin-panel">
+          <div class="admin-card" id="admin-agenda-form">
+            <h4><i class="fas fa-edit"></i> Atur Agenda</h4>
+            <input type="hidden" id="agenda-id">
+            <div class="form-group"><label for="agenda-start-date">Tanggal Mulai:</label><input type="date" id="agenda-start-date"></div>
+            <div class="form-group"><label for="agenda-end-date">Tanggal Akhir (Opsional):</label><input type="date" id="agenda-end-date"></div>
+            <div class="form-group"><label for="agenda-desc">Deskripsi:</label><input type="text" id="agenda-desc" placeholder="Contoh: Penilaian Akhir Semester"></div>
+            <div class="form-group checkbox-group"><input type="checkbox" id="agenda-is-holiday"><label for="agenda-is-holiday">Jadikan sebagai hari libur</label></div>
+            <div style="display: flex; gap: 10px;">
+              <button id="save-agenda-btn" class="action-btn">Simpan Agenda</button>
+              <button type="button" id="clear-agenda-form-btn" class="action-btn" style="background-color: #6c757d;">Batal</button>
+            </div>
+          </div>
+          <div class="admin-card" id="admin-holiday-form">
+            <h4><i class="fas fa-flag"></i> Atur Hari Libur (Manual)</h4>
+            <div class="form-group"><label for="holiday-date">Tanggal:</label><input type="date" id="holiday-date"></div>
+            <div class="form-group"><label for="holiday-name">Keterangan Libur:</label><input type="text" id="holiday-name" placeholder="Contoh: Cuti Bersama Idul Fitri"></div>
+             <div style="display: flex; gap: 10px;">
+                <button id="save-holiday-btn" class="action-btn">Simpan Libur</button>
+                <button type="button" id="clear-holiday-form-btn" class="action-btn" style="background-color: #6c757d;">Batal</button>
+            </div>
+          </div>
+          <div class="admin-card" id="admin-import-form">
+            <h4><i class="fas fa-file-excel"></i> Impor Agenda/Libur</h4>
+            <div class="form-group"><label for="import-events-file">Pilih File (.xlsx):</label><input type="file" id="import-events-file" accept=".xlsx, .xls"></div>
+            <div style="display: flex; gap: 10px;">
+              <button id="import-events-btn" class="action-btn" style="background-color: #0d6efd;">Impor</button>
+              <button id="download-template-btn" class="action-btn" style="background-color: #00796b;">Unduh Template</button>
+            </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Details Modal -->
+  <div class="modal-overlay" id="event-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 id="modal-date-title"></h4>
+        <button id="modal-close-btn" class="modal-close-btn" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-event-list" class="modal-event-list"></div>
+        <div id="modal-attachment-list"></div>
+        <div id="modal-admin-actions"><p style="font-size: 0.9em; color: #888; text-align: center;"><i>Memuat aksi admin...</i></p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="kalender.js"></script>
+</body>
+</html>
