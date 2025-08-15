@@ -1,0 +1,772 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dasbor Absensi MIA02</title>
+  <!-- Font Awesome untuk ikon -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Font Inter dan Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Chart.js untuk grafik -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- XLSX.js untuk membaca dan menulis file excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /* Gaya Dasar */
+    body {
+      font-family: 'Inter', 'Poppins', sans-serif;
+      background: #F3F4F6;
+      color: #1F2A44;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark-mode {
+      background: #1F2A44;
+      color: #E0E0E0;
+    }
+    body.dark-mode .stat-card,
+    body.dark-mode .data-table-container,
+    body.dark-mode .sidebar {
+      background: #2D3B55;
+      color: #E0E0E0;
+    }
+    body.dark-mode th {
+      background: #3B4A6B;
+      color: #E0E0E0;
+    }
+    body.dark-mode td {
+      color: #D1D5DB;
+    }
+
+    /* Header Utama */
+    header.header {
+      background: linear-gradient(135deg, #1E3A8A 0%, #2DD4BF 100%);
+      color: white;
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    header.header img.logo {
+      height: 28px;
+      margin-right: 8px;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    header.header h1 {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.15em;
+      font-weight: 600;
+    }
+    .dark-mode-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1em;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+    .dark-mode-toggle:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Kontainer Kartu Statistik */
+    .stats-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      background: #F3F4F6;
+      padding: 12px 15px;
+    }
+    body.dark-mode .stats-container {
+      background: #1F2A44;
+    }
+    .stat-card {
+      background: linear-gradient(145deg, #ffffff, #f8fafc);
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-left-color 0.3s ease;
+    }
+    body.dark-mode .stat-card {
+      background: linear-gradient(145deg, #2D3B55, #3B4A6B);
+    }
+    .stat-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+    }
+    .stat-card.active {
+      border-left-width: 5px;
+    }
+    .stat-card.total.active { border-left-color: #1E88E5; }
+    .stat-card.sakit.active { border-left-color: #E53935; }
+    .stat-card.izin.active { border-left-color: #FBBF24; }
+
+    .stat-icon {
+      font-size: 1.2em;
+      margin-right: 10px;
+      color: white;
+      padding: 10px;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .stat-card.total .stat-icon { background: linear-gradient(45deg, #1E88E5, #60A5FA); }
+    .stat-card.sakit .stat-icon { background: linear-gradient(45deg, #E53935, #F87171); }
+    .stat-card.izin .stat-icon { background: linear-gradient(45deg, #FBBF24, #FACC15); }
+
+    .stat-content h3 {
+      margin: 0;
+      font-size: 0.75em;
+      color: #6B7280;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+    }
+    .stat-content .stat-value {
+      font-size: 1.35em;
+      font-weight: 600;
+      color: #1F2A44;
+    }
+    body.dark-mode .stat-content h3 {
+      color: #9CA3AF;
+    }
+    body.dark-mode .stat-content .stat-value {
+      color: #E0E0E0;
+    }
+
+    /* Wrapper untuk Sidebar dan Konten */
+    .main-layout-below-header-and-stats {
+      display: flex;
+      flex-grow: 1;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 100%;
+      background: white;
+      padding: 15px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      border-bottom: 1px solid #E0E0E0;
+      display: flex;
+      flex-direction: column;
+      order: 1;
+    }
+    .sidebar h2 {
+      color: #1E3A8A;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1em;
+      border-bottom: 1px solid #2DD4BF;
+      padding-bottom: 8px;
+      margin: 0 0 12px 0;
+      display: flex;
+      align-items: center;
+    }
+    .sidebar h2 i { margin-right: 6px; font-size: 0.9em; }
+
+    .filter-group { margin-bottom: 12px; }
+    .filter-group label {
+      font-size: 0.8em;
+      margin-bottom: 5px;
+      color: #1F2A44;
+      display: block; /* Ensure label takes full width */
+    }
+    body.dark-mode .filter-group label {
+      color: #E0E0E0;
+    }
+    .filter-group label i { font-size: 0.85em; }
+    .filter-group input,
+    .filter-group select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #D1D5DB;
+      border-radius: 5px;
+      font-size: 0.8em;
+      background: #FFFFFF;
+      color: #1F2A44;
+      box-sizing: border-box; /* Include padding and border in element's total width and height */
+    }
+    .filter-group select:disabled {
+        background-color: #e9ecef;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    body.dark-mode .filter-group select:disabled {
+        background-color: #3b4a6b;
+        opacity: 0.5;
+    }
+    body.dark-mode .filter-group input,
+    body.dark-mode .filter-group select {
+      background: #3B4A6B;
+      border-color: #4B5EAA;
+      color: #E0E0E0;
+    }
+    .autocomplete-suggestions {
+      position: absolute;
+      background: white;
+      border: 1px solid #D1D5DB;
+      border-radius: 5px;
+      max-height: 150px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+    body.dark-mode .autocomplete-suggestions {
+      background: #2D3B55;
+      border-color: #4B5EAA;
+    }
+    .autocomplete-suggestions div {
+      padding: 8px;
+      cursor: pointer;
+    }
+    .autocomplete-suggestions div:hover {
+      background: #E5E7EB;
+    }
+    body.dark-mode .autocomplete-suggestions div:hover {
+      background: #4B5EAA;
+    }
+    .button-container { /* Container for buttons */
+        display: flex;
+        gap: 10px; /* Space between buttons */
+        margin-top: 10px;
+    }
+    .button-reset, .button-export {
+      flex-grow: 1; /* Make buttons share space equally */
+      padding: 8px 10px;
+      font-size: 0.85em;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-align: center;
+    }
+    .button-reset {
+      background: #2DD4BF;
+      color: #1F2A44;
+    }
+    .button-reset:hover {
+      background: #5EEAD4;
+    }
+    .button-export {
+      background: #00796B; /* Green for Excel */
+      color: white;
+    }
+    .button-export:hover {
+      background: #00897B;
+    }
+    body.dark-mode .button-reset {
+      background: #4B5EAA;
+      color: #E0E0E0;
+    }
+    body.dark-mode .button-reset:hover {
+      background: #60A5FA;
+    }
+
+    /* Area Konten Utama */
+    .content-area {
+      flex-grow: 1;
+      padding: 15px;
+      width: 100%;
+      order: 2;
+      box-sizing: border-box;
+    }
+    .data-table-container, .chart-container {
+      background: #FFFFFF;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+      margin-bottom: 15px;
+    }
+    .table-header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .table-header-controls h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.1em;
+      color: #1E3A8A;
+      margin: 0;
+    }
+    body.dark-mode .table-header-controls h2 {
+      color: #2DD4BF;
+    }
+    .table-header-controls div label, .table-header-controls div select {
+      font-size: 0.8em;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .tab {
+      padding: 8px 16px;
+      border-radius: 5px;
+      background: #E5E7EB;
+      cursor: pointer;
+      font-size: 0.85em;
+      transition: background 0.2s;
+    }
+    .tab.active {
+      background: #2DD4BF;
+      color: white;
+    }
+    body.dark-mode .tab {
+      background: #3B4A6B;
+      color: #E0E0E0;
+    }
+    body.dark-mode .tab.active {
+      background: #4B5EAA;
+    }
+    table {
+      font-size: 0.8em;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 9px 12px;
+      text-align: left;
+      border-bottom: 1px solid #E5E7EB;
+    }
+    th {
+      background: #F8FAFC;
+      color: #1F2A44;
+      font-size: 0.75em;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    td {
+      color: #4B5563;
+    }
+    .sort-arrow {
+      margin-left: 5px;
+      opacity: 0.7;
+    }
+    .delete-btn {
+        background: none;
+        border: none;
+        color: #ef4444;
+        cursor: pointer;
+        font-size: 1.1em;
+        padding: 5px;
+        transition: color 0.2s;
+    }
+    .delete-btn:hover {
+        color: #b91c1c;
+    }
+    .loader {
+      width: 20px;
+      height: 20px;
+      border: 3px solid #2DD4BF;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .status-message {
+      font-size: 0.8em;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .status-success { background: #D1FAE5; color: #065F46; }
+    .status-error { background: #FEE2E2; color: #991B1B; }
+    .status-warning { background: #FEF3C7; color: #92400E; }
+    .pagination-controls {
+      font-size: 0.8em;
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+    .pagination-controls button {
+      padding: 6px 12px;
+      border-radius: 5px;
+      border: none;
+      background: #2DD4BF;
+      color: white;
+      cursor: pointer;
+    }
+    .pagination-controls button:disabled {
+      background: #D1D5DB;
+      cursor: not-allowed;
+    }
+    #rowsPerPageSelect {
+      padding: 5px 7px;
+      border-radius: 5px;
+      font-size: 0.8em;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+        width: 100%;
+        max-width: 550px;
+        text-align: left;
+        animation: modal-fade-in 0.3s ease-out;
+    }
+    @keyframes modal-fade-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .modal-title { text-align: center; color: #1E3A8A; margin-top: 0; }
+    body.dark-mode .modal-content { background-color: #2D3B55; }
+    body.dark-mode .modal-title { color: #A5B4FC; }
+
+    #importLog {
+        background-color: #f8f9fa; border: 1px solid #dee2e6;
+        border-radius: 4px; padding: 10px;
+        min-height: 100px; max-height: 40vh;
+        overflow-y: auto; font-family: monospace;
+        font-size: 0.85em; white-space: pre-wrap; line-height: 1.5;
+    }
+    body.dark-mode #importLog {
+        background-color: #1F2A44;
+        border-color: #3B4A6B;
+    }
+    #importLog b { color: #D32F2F; }
+    body.dark-mode #importLog b { color: #F87171; }
+    
+    .progress-bar-container {
+        width: 100%; background-color: #e9ecef;
+        border-radius: 4px; margin: 10px 0;
+    }
+    .progress-bar {
+        height: 20px; width: 0%;
+        background-color: #28a745; border-radius: 4px;
+        text-align: center; color: white; line-height: 20px;
+        transition: width 0.4s ease;
+    }
+
+
+    /* Media Query untuk Desktop */
+    @media (min-width: 769px) {
+      header.header { padding: 14px 20px; }
+      header.header img.logo { height: 30px; }
+      header.header h1 { font-size: 1.25em; }
+      .stats-container {
+        grid-template-columns: repeat(3, 1fr);
+        padding: 15px 20px;
+      }
+      .stat-card { padding: 15px; }
+      .stat-icon { font-size: 1.3em; margin-right: 12px; padding: 10px; width: 26px; height: 26px; }
+      .stat-content h3 { font-size: 0.8em; }
+      .stat-content .stat-value { font-size: 1.5em; }
+      .main-layout-below-header-and-stats {
+        flex-wrap: nowrap;
+      }
+      .sidebar {
+        width: 260px;
+        flex-shrink: 0;
+        order: 0;
+        position: sticky;
+        overflow-y: auto;
+        border-bottom: none;
+        border-right: 1px solid #E0E0E0;
+        padding: 20px;
+        box-shadow: none;
+        z-index: 980;
+      }
+      .content-area {
+        order: 0;
+        padding: 20px;
+        flex-grow: 1;
+        width: auto; /* Reset width */
+        overflow-x: auto;
+      }
+      .filter-group label, .filter-group input, .filter-group select { font-size: 0.85em; }
+      .autocomplete-suggestions {
+         width: auto; /* Allow it to size based on input width */
+         min-width: 220px; /* Or parent width if needed */
+      }
+    }
+
+    /* Media Query untuk Tablet */
+    @media (max-width: 900px) and (min-width: 481px) {
+      .stats-container {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        padding: 12px 15px;
+      }
+      .main-layout-below-header-and-stats { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        position: static;
+        height: auto;
+        order: 1;
+        margin-bottom: 15px;
+        border-right: none;
+        box-sizing: border-box;
+      }
+      .content-area {
+        order: 2;
+        width: 100%;
+        overflow-x: auto;
+        box-sizing: border-box;
+      }
+       .autocomplete-suggestions {
+         width: calc(100% - 30px); /* Adjust based on sidebar padding */
+      }
+    }
+
+    /* Media Query untuk Mobile */
+    @media (max-width: 480px) {
+      header.header { padding: 10px 12px; }
+      header.header img.logo { height: 26px; }
+      header.header h1 { font-size: 1.1em; }
+      .stats-container {
+        padding: 10px 12px;
+        gap: 10px;
+        grid-template-columns: 1fr;
+      }
+      .stat-card { padding: 12px; }
+      .stat-icon { font-size: 1.1em; margin-right: 8px; padding: 8px; width: 22px; height: 22px; }
+      .stat-content h3 { font-size: 0.7em; }
+      .stat-content .stat-value { font-size: 1.25em; }
+      .main-layout-below-header-and-stats { flex-direction: column; }
+      .sidebar {
+        padding: 12px;
+        position: static;
+        height: auto;
+        order: 1;
+        border-right: none;
+        margin-bottom: 12px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .sidebar h2 { font-size: 0.9em; padding-bottom: 6px; margin-bottom: 10px; }
+      .filter-group label { font-size: 0.75em; }
+      .filter-group input, .filter-group select { padding: 6px 8px; font-size: 0.75em; }
+      .button-reset, .button-export { padding: 7px; font-size: 0.8em; }
+      .content-area { padding: 12px; order: 2; width: 100%; overflow-x: auto; box-sizing: border-box;}
+      .data-table-container { padding: 12px; }
+      .table-header-controls h2 { font-size: 1em; }
+      th, td { padding: 7px 8px; font-size: 0.75em; }
+      .pagination-controls { font-size: 0.75em; }
+      .pagination-controls button { padding: 5px 10px; }
+      .autocomplete-suggestions {
+         width: calc(100% - 24px); /* Adjust based on sidebar padding */
+      }
+    }
+     /* Visually hidden class for accessibility */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div style="display: flex; align-items: center;">
+      <img src="https://mia02sgs.sch.id/wp-content/uploads/2024/01/cropped-Tagline-1.png" alt="Logo MIA02" class="logo" onerror="this.style.display='none'">
+      <h1 id="app-header-title">Dasbor Absensi MIA02</h1>
+    </div>
+    <button id="darkModeToggle" class="dark-mode-toggle" aria-label="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+  </header>
+
+  <div class="stats-container" id="statsContainer">
+    <div class="stat-card total active" id="statCardTotal" tabindex="0" role="button" aria-pressed="true">
+      <div class="stat-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
+      <div class="stat-content">
+        <h3>Total Tidak Masuk</h3>
+        <p class="stat-value" id="statTotalTidakMasuk">0</p>
+      </div>
+    </div>
+    <div class="stat-card sakit" id="statCardSakit" tabindex="0" role="button" aria-pressed="false">
+      <div class="stat-icon"><i class="fas fa-head-side-virus" aria-hidden="true"></i></div>
+      <div class="stat-content">
+        <h3>Total Sakit</h3>
+        <p class="stat-value" id="statTotalSakit">0</p>
+      </div>
+    </div>
+    <div class="stat-card izin" id="statCardIzin" tabindex="0" role="button" aria-pressed="false">
+      <div class="stat-icon"><i class="fas fa-envelope-open-text" aria-hidden="true"></i></div>
+      <div class="stat-content">
+        <h3>Total Izin Lain</h3>
+        <p class="stat-value" id="statTotalIzin">0</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-layout-below-header-and-stats" id="mainLayout">
+    <aside class="sidebar" id="sidebar">
+      <h2><i class="fas fa-filter" aria-hidden="true"></i> Filter Data</h2>
+      <div class="filter-group">
+        <label for="startDate"><i class="fas fa-calendar-alt"></i> Tanggal Mulai:</label>
+        <input type="date" id="startDate" aria-label="Tanggal Mulai Filter">
+      </div>
+      <div class="filter-group">
+        <label for="endDate"><i class="fas fa-calendar-day"></i> Tanggal Akhir:</label>
+        <input type="date" id="endDate" aria-label="Tanggal Akhir Filter">
+      </div>
+      <div class="filter-group">
+        <label for="filterKelas"><i class="fas fa-school" aria-hidden="true"></i> Kelas:</label>
+        <select id="filterKelas" aria-label="Filter berdasarkan kelas">
+          <option value="">Semua Kelas</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filterKelasBilqolam"><i class="fas fa-book-open" aria-hidden="true"></i> Kelas Bilqolam:</label>
+        <select id="filterKelasBilqolam" aria-label="Filter berdasarkan kelas Bilqolam">
+          <option value="">Semua Kelas Bilqolam</option>
+        </select>
+      </div>
+      <div class="filter-group" style="position: relative;">
+        <label for="filterNamaInput"><i class="fas fa-user" aria-hidden="true"></i> Nama Siswa (min. 2 huruf):</label>
+        <input type="text" id="filterNamaInput" placeholder="Ketik nama..." aria-autocomplete="list" aria-controls="autocompleteSuggestions">
+        <div id="autocompleteSuggestions" class="autocomplete-suggestions" role="listbox"></div>
+      </div>
+      <div class="button-container">
+        <button id="resetFilterButton" class="button-reset"><i class="fas fa-sync-alt" aria-hidden="true"></i> Reset Filter</button>
+        <button id="exportXlsxButton" class="button-export"><i class="fas fa-file-excel" aria-hidden="true"></i> Ekspor XLSX</button>
+      </div>
+      <div style="margin-top: 10px;">
+        <a href="kalender.html" target="_blank" class="button-reset" style="display:block; text-decoration:none; background-color: #0d9488; color: white; text-align: center;"><i class="fas fa-calendar-alt"></i> Lihat Kalender</a>
+      </div>
+      <div class="admin-section" style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
+        <button id="adminLoginBtn" class="button-reset" style="background-color: #64748b; color: white; width: 100%;"><i class="fas fa-lock"></i> Fitur Admin</button>
+        <div id="adminControls" style="display: none; margin-top: 10px;">
+             <label for="importFile" class="filter-group" style="font-weight: 500; font-size: 0.8em;">Impor Absensi dari XLSX:</label>
+             <input type="file" id="importFile" accept=".xlsx, .xls" style="margin-top: 5px; font-size: 0.8em;"/>
+             <button id="benarkanBilqolamBtn" class="button-reset" style="background-color: #f59e0b; color: white; width: 100%; margin-top: 10px;"><i class="fas fa-magic"></i> Benarkan Kelas Bilqolam</button>
+        </div>
+      </div>
+      <div id="statusMessage" class="status-message" style="display: none;" role="alert"></div>
+    </aside>
+
+    <main class="content-area">
+      <div class="tabs" role="tablist">
+        <div class="tab active" data-tab="table" role="tab" aria-selected="true" aria-controls="tableView" tabindex="0">Tabel</div>
+        <div class="tab" data-tab="chart" role="tab" aria-selected="false" aria-controls="chartView" tabindex="0">Grafik</div>
+      </div>
+      <div class="data-table-container" id="tableView" role="tabpanel" aria-labelledby="tab-table">
+        <div class="table-header-controls">
+          <h2 id="tableTitle">Data Absensi</h2>
+          <div>
+            <label for="rowsPerPageSelect"><i class="fas fa-list-ol" aria-hidden="true"></i> Tampilkan:</label>
+            <select id="rowsPerPageSelect" aria-label="Jumlah baris per halaman">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+        <div id="loader" class="loader" role="status" aria-live="polite">
+            <span class="sr-only">Memuat data...</span>
+        </div>
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table id="absensiTable" aria-live="polite">
+              <thead>
+                <tr>
+                  <th data-column="tanggalDisplay" data-sortable="true" scope="col" aria-sort="none">Tanggal <span class="sort-arrow"></span></th>
+                  <th data-column="nama" data-sortable="true" scope="col" aria-sort="none">Nama Siswa <span class="sort-arrow"></span></th>
+                  <th data-column="kelas" data-sortable="true" scope="col" aria-sort="ascending">Kelas <span class="sort-arrow"></span></th>
+                  <th data-column="kelasBilqolam" data-sortable="true" scope="col" aria-sort="none">Kelas Bilqolam <span class="sort-arrow"></span></th>
+                  <th data-column="alasan" data-sortable="true" scope="col" aria-sort="none">Alasan <span class="sort-arrow"></span></th>
+                  <th data-column="keterangan" scope="col">Keterangan</th>
+                  <th data-column="aksi" scope="col" class="admin-only-header" style="display: none;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="absensiTableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination-controls" role="navigation" aria-label="Navigasi halaman">
+          <button id="prevPageButton" disabled>« Sebelumnya</button>
+          <span id="pageInfo" aria-live="polite">Halaman 1 dari 1</span>
+          <button id="nextPageButton" disabled>Berikutnya »</button>
+        </div>
+        <p id="noDataMessage" style="text-align: center; display: none; padding: 20px;">Tidak ada data yang sesuai dengan filter.</p>
+      </div>
+      <div class="chart-container" id="chartView" style="display: none;" role="tabpanel" aria-labelledby="tab-chart">
+        <canvas id="attendanceChart" aria-label="Grafik Statistik Absensi"></canvas>
+      </div>
+    </main>
+  </div>
+  
+  <div id="adminLoginModal" class="modal-overlay" style="display:none; flex-direction: column;">
+      <div class="modal-content" style="max-width: 350px;">
+          <h3 class="modal-title"><i class="fas fa-key"></i> Autentikasi Admin</h3>
+          <div class="filter-group" style="margin-top: 20px;">
+              <label for="adminPassword">Password:</label>
+              <input type="password" id="adminPassword" autofocus>
+          </div>
+          <div id="loginError" style="color: red; font-size: 0.8em; margin-top: 10px; display: none; text-align: center;">Password salah.</div>
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+              <button id="loginSubmit" class="button-reset" style="flex-grow: 1; background-color: #1E88E5; color: white;">Login</button>
+              <button id="loginCancel" class="button-export" style="flex-grow: 1; background-color: #9CA3AF;">Batal</button>
+          </div>
+      </div>
+  </div>
+
+  <div id="importLogModal" class="modal-overlay" style="display:none; flex-direction: column;">
+      <div class="modal-content" style="max-width: 600px;">
+           <h3 class="modal-title"><i class="fas fa-file-excel"></i> Log Impor Data</h3>
+           <div class="progress-bar-container" style="display: none;">
+               <div id="importProgressBar" class="progress-bar">0%</div>
+           </div>
+           <div id="importLog">
+                <p>Menunggu file dipilih...</p>
+                <p><strong>Penting:</strong></p>
+                <ul>
+                    <li>File Excel harus berisi kolom `id_siswa` sebagai kunci.</li>
+                    <li>Kolom lain yang didukung: `tanggal_izin` (atau `tanggal`), `alasan`, `keterangan`.</li>
+                    <li>Data akan diperbarui jika ada entri dengan `id_siswa` dan `tanggal_izin` yang sama, atau ditambahkan sebagai data baru.</li>
+                </ul>
+           </div>
+           <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+               <button id="importLogClose" class="button-export" style="background-color: #64748b;">Tutup</button>
+           </div>
+      </div>
+  </div>
+
+  <p class="sr-only" id="dark-mode-status" aria-live="polite"></p>
+  <span class="sr-only" id="currentSortDescription" aria-live="polite"></span>
+
+  <script type="module" src="izin-dasbor.js"></script>
+
+</body>
+</html>
