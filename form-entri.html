@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formulir Entri Data Siswa</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --header-bg-color: #2E7D32; /* Default color, will be overridden by JS */
+    }
+    body { 
+      font-family: 'Poppins', Arial, sans-serif; 
+      background-color: #f0f2f5;
+      color: #333; 
+      margin: 0; 
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .form-wrapper {
+      max-width: 650px;
+      width: 100%;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .form-header {
+      background-color: var(--header-bg-color);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+    .logo-placeholder {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 15px auto;
+      background-color: rgba(255, 255, 255, 0.95);
+      border: 3px solid white;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #555;
+      font-size: 36px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .form-header h1 {
+      margin: 0;
+      font-size: 1.7em;
+      font-weight: 600;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    }
+    .form-header p {
+      margin: 5px 0 0 0;
+      font-size: 1em;
+      opacity: 0.9;
+    }
+
+    .form-body {
+      padding: 25px 30px 30px 30px;
+    }
+    .form-body h2 {
+      text-align: center;
+      color: #333;
+      margin-top: 0;
+      margin-bottom: 5px;
+      font-size: 1.5em;
+    }
+    .form-body .info-text {
+      text-align: center;
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    /* --- Form Layout --- */
+    #dynamicFormContainer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 24px; /* 0 row-gap, 24px column-gap */
+    }
+    .form-group { margin-bottom: 20px; position: relative; }
+    .form-group.form-group-full-width { width: 100%; }
+    .form-group.form-group-half-width {
+      flex-grow: 1;
+      width: calc(50% - 12px); /* Half of container minus half of column-gap */
+      min-width: 250px;
+    }
+    @media (max-width: 650px) {
+      .form-group.form-group-half-width { width: 100%; }
+      #dynamicFormContainer { gap: 0; }
+    }
+    /* --- End Form Layout --- */
+    
+    label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
+    input[type="text"], input[type="date"], input[type="email"], input[type="number"], input[type="tel"], textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    textarea { min-height: 80px; resize: vertical; }
+    input:disabled, textarea:disabled, select:disabled { background-color: #e9ecef; cursor: not-allowed; }
+    #dataForm button[type="submit"] { display: block; width: 100%; padding: 12px; background-color: var(--header-bg-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.3s, filter 0.3s; margin-top: 15px; }
+    #dataForm button[type="submit"]:hover:not(:disabled) { filter: brightness(90%); }
+    #dataForm button[type="submit"]:disabled { background-color: #cccccc; cursor: not-allowed; filter: none; }
+    #response { margin-top: 20px; padding: 12px; border-radius: 8px; text-align: center; font-weight: 600; display: none; }
+    .response-success { background-color: #d4edda; color: #155724; }
+    .response-error { background-color: #f8d7da; color: #721c24; }
+    .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-left: 8px; vertical-align: middle; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .form-loading { text-align: center; padding: 20px; font-style: italic; color: #555; width: 100%; }
+    .autocomplete-suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; padding: 0; margin: 0; list-style-type: none; box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+    .autocomplete-suggestions-list li { padding: 10px 12px; cursor: pointer; font-size: 15px; }
+    .autocomplete-suggestions-list li:hover, .autocomplete-suggestions-list li.active { background-color: #f0f0f0; }
+    .field-note-autocomplete { font-size: 0.85em; color: #6c757d; margin-top: 5px; text-align: left; display: block; }
+    .field-note-autocomplete { color: #cc8400; display: none; }
+    .form-field-hint { font-size: 0.8em; color: #6c757d; margin-top: 3px; text-align: left; display: block; font-style: italic; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
+    .modal-content { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); width: 100%; max-width: 500px; text-align: left; animation: modal-fade-in 0.3s ease-out; }
+    @keyframes modal-fade-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .modal-title { text-align: center; color: var(--header-bg-color); margin-top: 0; }
+    .modal-subtitle { text-align: center; font-size: 0.9em; color: #555; margin-top: -10px; margin-bottom: 20px; }
+    #reviewDataContainer { border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 15px 0; margin-bottom: 20px; max-height: 40vh; overflow-y: auto; }
+    .review-item { display: flex; justify-content: space-between; padding: 10px 5px; border-bottom: 1px solid #f0f0f0; font-size: 15px; }
+    .review-item:last-child { border-bottom: none; }
+    .review-item strong { color: #333; flex-basis: 40%; }
+    .review-item span { color: #555; text-align: right; flex-basis: 60%; }
+    .modal-close-button { display: block; width: 100%; padding: 12px; background-color: #1E88E5; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.3s; margin-top: 10px; }
+    .modal-close-button:hover { background-color: #1565C0; }
+  </style>
+</head>
+<body>
+  <div class="form-wrapper">
+    <header class="form-header" id="formHeader">
+        <div class="logo-placeholder">
+             <img src="https://mia02sgs.sch.id/wp-content/uploads/2024/01/cropped-Tagline-1.png" alt="Logo Sekolah" style="width:100%; height:100%; object-fit: cover; border-radius: 50%;">
+        </div>
+        <h1 id="schoolName">Nama Sekolah</h1>
+        <p id="schoolSubtitle">Subtitle Sekolah</p>
+    </header>
+    <main class="form-body">
+        <h2 id="formTitle">Formulir Entri Data Siswa</h2>
+        <p class="info-text" id="formSubtitle">Ketik dan pilih nama siswa untuk mengisi data lainnya secara otomatis.</p>
+        <form id="dataForm">
+            <div id="dynamicFormContainer">
+                <p class="form-loading">Memuat formulir...</p>
+            </div>
+            <button type="submit" id="submitButton" disabled><i class="fa fa-paper-plane"></i> Kirim Data <span id="submitSpinner" class="spinner" style="display: none;"></span></button>
+        </form>
+        <div id="response"></div>
+    </main>
+  </div>
+
+  <div id="reviewModalOverlay" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title"><i class="fas fa-check-circle"></i> Data Berhasil Dikirim!</h3>
+      <p class="modal-subtitle">Berikut adalah rincian data yang telah Anda kirim. Silakan lakukan screenshot sebagai bukti.</p>
+      <div id="reviewDataContainer">
+      </div>
+      <button id="closeModalButton" class="modal-close-button"><i class="fas fa-times"></i> Tutup</button>
+    </div>
+  </div>
+
+  <script src="form.js"></script>
+</body>
+</html>
