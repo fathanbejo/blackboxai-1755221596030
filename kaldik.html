@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender Pendidikan - Tampilan Tabel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Times+New+Roman&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@latest/dist/jspdf.plugin.autotable.js"></script>
+    <style>
+        :root {
+            --primary-green: #2E7D32;
+            --primary-green-dark: #1B5E20;
+            --primary-text: #28354E;
+            --secondary-text: #8A92A6;
+            --border-color: #E9ECEF;
+            --past-event-bg: #f8f9fa;
+            --past-event-text: #6c757d;
+            --holiday-text: #dc3545;
+        }
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background-color: #F8F9FA;
+            color: var(--primary-text);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        .formal-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--primary-green);
+            margin-bottom: 5px;
+            position: relative;
+        }
+        .formal-header::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            right: 0;
+            height: 2.5px;
+            background-color: var(--primary-green);
+        }
+        .formal-header .logo { width: 80px; height: auto; flex-shrink: 0; }
+        .formal-header .titles { flex-grow: 1; text-align: center; }
+        .formal-header .titles p { margin: 1px 0; }
+
+        .formal-header .line1 { font-size: 1.1em; color: var(--primary-green); font-weight: 600; }
+        .formal-header .line2 { font-size: 0.75em; color: var(--primary-text); }
+        .formal-header .line3 { font-family: 'Times New Roman', Times, serif; font-size: 1.6em; color: var(--primary-green); font-weight: 700; letter-spacing: 0.5px; }
+        .formal-header .line4 { font-size: 1.3em; color: var(--primary-green); font-weight: 600; }
+        .formal-header .line5, .formal-header .line6 { font-size: 0.8em; color: var(--primary-text); }
+
+        .main-title-container { padding-top: 15px; }
+        .main-title-container h2 { font-size: 1.5em; margin: 0; font-weight: 600; }
+        .main-title-container p { margin: 5px 0 0 0; color: var(--secondary-text); }
+        
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filter-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .filter-group label { font-weight: 500; font-size: 0.9em; }
+        .filter-group input[type="date"], .filter-group input[type="text"] {
+            padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+        }
+        .filter-group input[type="text"] { width: 180px; }
+
+        .action-buttons { display: flex; gap: 10px; }
+        .nav-button, .action-btn {
+            padding: 8px 15px;
+            background-color: var(--primary-green);
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .nav-button { background-color: #0d9488; }
+        .action-btn.export-btn { background-color: #00796B; }
+        
+        #add-event-btn {
+            display: none; /* Hide by default, JS will show it after admin login */
+        }
+        
+        .table-wrapper { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #F8F9FA; font-weight: 600; }
+        tbody tr { transition: background-color 0.2s; }
+        tbody tr.interactive-row:hover { background-color: var(--border-color); cursor: pointer; }
+        tr.past-event { background-color: var(--past-event-bg); color: var(--past-event-text); }
+        tr.past-event .event-date { text-decoration: line-through; }
+        .countdown-cell.today { font-weight: bold; color: var(--primary-green); }
+        .countdown-cell.upcoming { color: #0d6efd; }
+        .admin-actions { display: flex; gap: 8px; }
+        .admin-actions button {
+             background: none; border: none; cursor: pointer; font-size: 1.1em;
+             padding: 5px; border-radius: 4px; transition: background-color 0.2s;
+        }
+        .edit-btn { color: #0d6efd; }
+        .edit-btn:hover { background-color: #e7f1ff; }
+        .delete-btn { color: #dc3545; }
+        .delete-btn:hover { background-color: #fee2e2; }
+
+        #loader { text-align: center; padding: 40px; }
+        #loader .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-green);
+            border-radius: 50%; width: 30px; height: 30px;
+            animation: spin 1s linear infinite; display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.6);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background-color: white; padding: 25px; border-radius: 12px;
+            width: 90%; max-width: 550px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            max-height: 90vh; display: flex; flex-direction: column;
+        }
+        .modal-header { padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        .modal-header h3 { margin-top: 0; color: var(--primary-green); }
+        .modal-header p { margin: 0; font-weight: 500; }
+        .modal-body { overflow-y: auto; padding: 15px 5px; }
+        .modal-body p { white-space: pre-wrap; }
+        #modal-attachment-list h5 { margin: 15px 0 10px 0; }
+        #modal-attachment-list a { display: block; margin-bottom: 5px; }
+        .modal-footer { text-align: right; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+             <div class="formal-header">
+                <img src="https://mia02sgs.sch.id/jadwal/logoypa.png" alt="Logo YPA" class="logo">
+                <div class="titles">
+                    <p class="line1">YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</p>
+                    <p class="line2">SK Menkumham No. AHU-0003189.ah.01.04 Tahun 2015</p>
+                    <p class="line3">MADRASAH IBTIDAIYAH ALMAARIF 02</p>
+                    <p class="line4">TERAKREDITASI "A"</p>
+                    <p class="line5">Jl. Masjid 33, Telp. (0341) 451542 Singosari Malang 65153</p>
+                    <p class="line6">email : mia02sgs@gmail.com - www.mia02sgs.sch.id</p>
+                </div>
+            </div>
+            <div class="main-title-container">
+                <h2>Kalender Pendidikan dan Agenda Madrasah</h2>
+                <p id="academic-year-title">Memuat Tahun Ajaran...</p>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="start-date-filter">Dari:</label>
+                    <input type="date" id="start-date-filter">
+                </div>
+                <div class="filter-group">
+                    <label for="end-date-filter">Sampai:</label>
+                    <input type="date" id="end-date-filter">
+                </div>
+                 <div class="filter-group">
+                    <input type="text" id="search-filter" placeholder="Cari kegiatan...">
+                </div>
+            </div>
+            <div class="action-buttons">
+                <a href="kalender.html" class="nav-button"><i class="fas fa-calendar-alt"></i> Tampilan Kalender</a>
+                <button id="export-pdf-btn" class="action-btn export-btn"><i class="fas fa-file-pdf"></i> Export PDF</button>
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Agenda Kegiatan</th>
+                        <th>Countdown</th>
+                        <th id="admin-actions-header" style="display: none;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="events-tbody"></tbody>
+            </table>
+            <div id="loader"><div class="spinner"></div></div>
+        </div>
+
+        <div class="pagination-controls">
+            <div id="pagination-info"></div>
+            <div class="pagination-buttons">
+                 <select id="rows-per-page" style="margin-right: 15px;">
+                    <option value="10">10 per halaman</option>
+                    <option value="25">25 per halaman</option>
+                    <option value="50">50 per halaman</option>
+                    <option value="-1">Tampilkan Semua</option>
+                </select>
+                <button id="prev-page-btn" class="nav-button" style="background-color: #6c757d;">&laquo;</button>
+                <button id="next-page-btn" class="nav-button" style="background-color: #6c757d;">&raquo;</button>
+            </div>
+        </div>
+
+        <div class="toolbar" style="margin-top:20px; justify-content:center;">
+             <button id="admin-login-btn" class="action-btn" style="background-color: #6c757d; display: inline-flex;"><i class="fas fa-lock"></i> Login Admin</button>
+             <button id="add-event-btn" class="action-btn"><i class="fas fa-plus"></i> Tambah Agenda</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="event-detail-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-detail-title"></h3>
+                <p id="modal-detail-date"></p>
+            </div>
+            <div class="modal-body">
+                <p id="modal-detail-description"></p>
+                <div id="modal-attachment-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-detail-modal-btn" class="action-btn" style="display:inline-flex; background-color: #6c757d;">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="event-form-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-form-title">Tambah Agenda Baru</h3>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="event-id">
+                <div class="form-group"><label for="event-start-date">Tanggal Mulai</label><input type="date" id="event-start-date" required></div>
+                <div class="form-group"><label for="event-end-date">Tanggal Akhir (Opsional)</label><input type="date" id="event-end-date"></div>
+                <div class="form-group"><label for="event-description">Deskripsi</label><textarea id="event-description" rows="3" required></textarea></div>
+                <div class="form-group"><input type="checkbox" id="event-is-holiday"><label for="event-is-holiday"> Jadikan sebagai hari libur</label></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-event-btn" class="action-btn" style="display:inline-flex; background-color: #6c757d;">Batal</button>
+                <button id="save-event-btn" class="action-btn" style="display:inline-flex;">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="kaldik.js"></script>
+</body>
+</html>
