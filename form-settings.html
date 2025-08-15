@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengaturan Form Dinamis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #1E3A8A;
+      --secondary-color: #1E88E5;
+      --success-color: #28a745;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #17a2b8;
+      --light-gray: #f0f2f5;
+      --border-color: #e0e0e0;
+      --text-dark: #333;
+      --text-light: #666;
+    }
+
+    body { font-family: 'Poppins', Arial, sans-serif; background-color: var(--light-gray); color: var(--text-dark); margin: 0; padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    h2 { text-align: center; color: var(--primary-color); margin-bottom: 25px; font-weight: 600; }
+    
+    .nav-buttons-container { display: flex; gap: 10px; margin-bottom: 25px; }
+    .nav-button { flex-grow: 1; text-align: center; padding: 10px 15px; background-color: var(--secondary-color); color: white; text-decoration: none; border-radius: 8px; font-weight: 500; transition: background-color 0.3s; border: none; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .nav-button:hover { background-color: #1565C0; }
+    .nav-button.grid { background-color: var(--info-color); }
+    .nav-button.grid:hover { background-color: #138496; }
+
+    .main-layout { display: flex; gap: 25px; align-items: flex-start; }
+    .side-panel { width: 340px; flex-shrink: 0; position: sticky; top: 20px; }
+    .main-content { flex-grow: 1; min-width: 0; }
+    .side-panel-card { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.07); margin-bottom: 20px; }
+    .side-panel-card h4 { margin-top: 0; color: var(--primary-color); }
+    
+    .saved-configs-controls { display: flex; flex-direction: column; gap: 10px; }
+    .saved-configs-controls select, .saved-configs-controls input[type="text"], .saved-configs-controls input[type="color"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95em; background-color: white; box-sizing: border-box; }
+    .saved-configs-controls input[type="color"] { padding: 5px; height: 45px; }
+    .preset-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    
+    .action-btn { background-color: var(--primary-color); color: white; padding: 10px 15px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; transition: background-color 0.3s, transform 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+    .action-btn:hover:not(:disabled) { background-color: #1e40af; transform: translateY(-1px); }
+    .action-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+    .action-btn.share-btn { background-color: #5856d6; }
+    .action-btn.delete-btn { background-color: var(--danger-color); }
+    .action-btn.save-preset-btn { background-color: var(--success-color); grid-column: 1 / -1; }
+    
+    .main-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    #saveSettingsButton { background-color: var(--success-color); font-weight: 600; padding: 12px 20px; font-size: 16px; grid-column: 1 / -1; } /* Make save button full width */
+
+    .field-config-item { background-color: #ffffff; border: 1px solid var(--border-color); border-left: 5px solid var(--secondary-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; position: relative; transition: box-shadow 0.2s, transform 0.2s, opacity 0.3s; user-select: none; }
+    .field-config-item.dragging { opacity: 0.5; background: #eef2ff; box-shadow: 0 8px 25px rgba(0,0,0,0.2); transform: scale(1.02); }
+    .field-config-item.marked-for-hiding { opacity: 0.6; border-left-color: var(--danger-color); background-color: #fff1f2; }
+    
+    .field-header { font-weight: 600; color: var(--primary-color); font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .drag-handle { cursor: grab; color: #9ca3af; font-size: 1.2em; }
+    .drag-handle:active { cursor: grabbing; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    
+    .field-content { overflow: hidden; max-height: 1000px; transition: max-height 0.4s ease-out, padding-top 0.4s ease-out, margin-top 0.4s ease-out; }
+    .field-config-item.is-collapsed .field-content { max-height: 0; padding-top: 0; margin-top: 0 !important; }
+
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end; }
+    .config-group { display: flex; flex-direction: column; }
+    .config-group label { margin-bottom: 5px; font-size: 0.9em; color: var(--text-light); }
+    .config-group input[type="text"], .config-group select, .config-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 0.95em; }
+    
+    .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .checkbox-item { display: flex; align-items: center; gap: 5px; }
+    .checkbox-item input[type="checkbox"] { width: auto; margin-right: 5px; transform: scale(1.1); }
+    .checkbox-item .checkbox-label { font-size: 0.95em; cursor: pointer; }
+    
+    input:disabled, select:disabled, textarea:disabled { background-color: #e9ecef !important; cursor: not-allowed !important; opacity: 0.7 !important; }
+    .field-action-btn { background: none; border: none; font-size: 1.2em; cursor: pointer; transition: color 0.2s; z-index: 5; padding: 2px 5px; }
+    .field-action-btn.delete-field-btn { color: var(--danger-color); }
+    .field-action-btn.delete-field-btn:hover { color: #b91c1c; }
+    .field-action-btn.hide-field-btn { color: #6b7280; }
+    .field-action-btn.hide-field-btn:hover { color: #111827; }
+    .field-action-btn.visibility-toggle-btn { color: #0d6efd; }
+    .field-action-btn.visibility-toggle-btn:hover { color: #0a58ca; }
+
+    .toggle-collapse-btn .fa-chevron-up { transition: transform 0.3s ease-in-out; }
+    .field-config-item.is-collapsed .toggle-collapse-btn .fa-chevron-up { transform: rotate(180deg); }
+
+    .loading-message { text-align: center; padding: 20px; font-style: italic; color: #555; }
+    .spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #fff; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; margin-left: 8px; vertical-align: middle; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .field-note { font-size: 0.85em; color: var(--text-light); margin-bottom: 10px; line-height: 1.5; }
+
+    /* Modal Styles */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
+    .modal-content { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); width: 100%; max-width: 550px; text-align: left; animation: modal-fade-in 0.3s ease-out; }
+    @keyframes modal-fade-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .modal-title { text-align: center; color: var(--primary-color); margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
+    .modal-subtitle { text-align: center; font-size: 0.9em; color: var(--text-light); margin-top: 0; margin-bottom: 20px; }
+    .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;}
+    #importLog { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; min-height: 100px; max-height: 40vh; overflow-y: auto; font-family: monospace; font-size: 0.85em; white-space: pre-wrap; line-height: 1.5; }
+    .progress-bar-container { width: 100%; background-color: #e9ecef; border-radius: 4px; margin: 10px 0; }
+    .progress-bar { height: 20px; width: 0%; background-color: var(--success-color); border-radius: 4px; text-align: center; color: white; line-height: 20px; transition: width 0.4s ease; }
+    #newPresetFieldsContainer {
+        border: 1px solid #ddd; padding: 15px; border-radius: 8px; max-height: 40vh; overflow-y: auto; 
+        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+  
+    /* Toast Notifications */
+    #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 9999; width: 350px; }
+    .toast-notification {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        background-color: #333;
+        color: #fff;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.25);
+        opacity: 0;
+        transform: translateX(100%);
+        animation: toast-slide-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards, toast-fade-out 0.5s 7.5s forwards;
+        font-size: 15px;
+        line-height: 1.4;
+    }
+    .toast-notification i.fas {
+        font-size: 1.2em;
+        margin-top: 2px;
+    }
+    .toast-notification div {
+        flex-grow: 1;
+    }
+    .toast-notification.success { background-color: var(--success-color); }
+    .toast-notification.error { background-color: var(--danger-color); }
+
+    @keyframes toast-slide-in {
+        to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes toast-fade-out {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(100%); visibility: hidden; }
+    }
+    
+    /* Responsive */
+    @media (max-width: 900px) {
+        .main-layout { flex-direction: column; }
+        .side-panel { width: 100%; position: static; }
+    }
+     @media (max-width: 400px) {
+        #toastContainer { width: calc(100% - 40px); }
+        #newPresetFieldsContainer { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2><i class="fas fa-cogs"></i> Pengaturan Form Entri Data</h2>
+    <div class="nav-buttons-container">
+      <a href="form-entri.html" class="nav-button"><i class="fas fa-edit"></i> Lihat Form Entri</a>
+      <a href="form-grid.html" class="nav-button grid"><i class="fas fa-table"></i> Lihat Data Grid</a>
+    </div>
+
+    <div class="main-layout">
+        <div class="side-panel">
+            <div class="side-panel-card">
+                <h4><i class="fas fa-history"></i> Riwayat & Preset</h4>
+                <p class="field-note">Simpan, muat, atau bagikan konfigurasi formulir yang berbeda.</p>
+                <div class="saved-configs-controls">
+                    <select id="savedConfigsDropdown"><option value="">Pilih preset...</option></select>
+                    <div class="preset-buttons">
+                        <button id="loadConfigBtn" class="action-btn" disabled><i class="fas fa-upload"></i> Muat</button>
+                        <button id="sharePresetBtn" class="action-btn share-btn" disabled><i class="fas fa-link"></i> Bagikan</button>
+                    </div>
+                    <button id="saveConfigAsBtn" class="action-btn save-preset-btn"><i class="fas fa-save"></i> Simpan Sebagai Preset Baru</button>
+                    <button id="deleteConfigBtn" class="action-btn delete-btn" disabled><i class="fas fa-trash-alt"></i> Hapus Preset Terpilih</button>
+                </div>
+            </div>
+
+            <div class="side-panel-card">
+                <h4><i class="fas fa-palette"></i> Tampilan & Branding Form</h4>
+                <p class="field-note">Atur tampilan header pada halaman formulir entri.</p>
+                <div class="saved-configs-controls">
+                    <div class="config-group">
+                        <label for="schoolNameInput">Nama Sekolah</label>
+                        <input type="text" id="schoolNameInput" placeholder="Contoh: MI ALMAARIF 02 SGS">
+                    </div>
+                    <div class="config-group">
+                        <label for="schoolSubtitleInput">Subtitle Sekolah</label>
+                        <input type="text" id="schoolSubtitleInput" placeholder="Contoh: Madrasah Ibtidaiyah...">
+                    </div>
+                    <div class="config-group">
+                        <label for="formSubtitleInput">Subtitle Form</label>
+                        <input type="text" id="formSubtitleInput" placeholder="Teks instruksi di bawah judul form">
+                    </div>
+                    <div class="config-group">
+                        <label for="headerColorInput">Warna Header</label>
+                        <input type="color" id="headerColorInput">
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-panel-card">
+                <h4><i class="fas fa-bolt"></i> Aksi Utama</h4>
+                <div class="main-actions-grid">
+                    <button id="createFormPresetBtn" class="action-btn" style="background-color: var(--warning-color); color: #fff; grid-column: 1 / -1;"><i class="fas fa-magic"></i> Buat Form Baru dari Template</button>
+                    <button id="addFieldBtn" class="action-btn"><i class="fas fa-plus-circle"></i> Tambah Kolom</button>
+                    <button id="syncFromDbBtn" class="action-btn" style="background-color: var(--secondary-color);"><i class="fas fa-sync-alt"></i> Sinkronisasi</button>
+                    <button id="importDataBtn" class="action-btn" style="background-color: #00796B;"><i class="fas fa-file-excel"></i> Import Excel</button>
+                    <button id="visibilityActionBtn" class="action-btn" style="background-color: #64748b;"><i class="fas fa-eye"></i> ...</button>
+                    <button id="toggleCollapseBtn" class="action-btn" style="background-color: #4b5563;" title="Ciutkan Semua Field"><i class="fas fa-compress-alt"></i> Ciutkan Semua</button>
+                    <button id="hideAllInFormBtn" class="action-btn" style="background-color: var(--warning-color);" title="Sembunyikan semua field di form kecuali NAMA"><i class="fas fa-eye-slash"></i> Sembunyikan Semua</button>
+                </div>
+                <button id="saveSettingsButton" class="action-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> Simpan Pengaturan <span id="saveSpinner" class="spinner" style="display: none;"></span></button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <p class="field-note" style="margin-top: 0;">Gunakan area ini untuk mengubah field. **Seret dan lepas (<i class="fas fa-grip-vertical"></i>) kartu field untuk mengubah urutannya.**</p>
+            <div id="fieldsConfigContainer" class="loading-message">Memuat konfigurasi field... <span class="spinner" style="border-top-color: var(--secondary-color);"></span></div>
+        </div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <!-- Create Form Preset Modal -->
+  <div id="createFormModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title"><i class="fas fa-magic"></i> Buat Form Baru</h3>
+      <p class="modal-subtitle">Buat preset form baru dengan memilih kolom yang akan ditampilkan.</p>
+      
+      <div class="config-group" style="margin-bottom: 15px;">
+        <label for="newPresetTitle"><strong>1. Judul Form / Nama Preset</strong></label>
+        <input type="text" id="newPresetTitle" placeholder="Contoh: Form Data Prestasi Siswa">
+      </div>
+       <div class="config-group" style="margin-bottom: 15px;">
+        <label for="newPresetSubtitle"><strong>2. Subtitle Form</strong></label>
+        <input type="text" id="newPresetSubtitle" placeholder="Contoh: Ketik dan pilih nama siswa...">
+      </div>
+      
+      <div class="config-group">
+        <label><strong>3. Pilih Kolom yang Akan Ditampilkan di Form</strong></label>
+        <div id="newPresetFieldsContainer">
+            <!-- Checkboxes will be injected here -->
+        </div>
+      </div>
+      
+      <div class="modal-buttons">
+          <button id="performCreatePresetBtn" class="action-btn" style="background-color:var(--success-color);"><i class="fas fa-check"></i> Simpan Form</button>
+          <button id="cancelCreatePresetBtn" class="action-btn" style="background-color: #6c757d;">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Column Modal -->
+  <div id="addColumnModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title"><i class="fas fa-plus-circle"></i> Tambah Kolom Baru</h3>
+      <p class="modal-subtitle">Buat kolom baru di tabel 'students' database Anda.</p>
+      <div class="config-group">
+        <label for="newColumnName">Nama Kolom (UPPERCASE, tanpa spasi, cth: HOBI_BARU)</label>
+        <input type="text" id="newColumnName" placeholder="NAMA_KOLOM_BARU">
+      </div>
+      <div class="config-group" style="margin-top: 15px;">
+        <label for="newColumnType">Tipe Data Kolom</label>
+        <select id="newColumnType">
+          <option value="VARCHAR(255)">Teks Singkat (VARCHAR 255)</option>
+          <option value="TEXT">Teks Panjang (TEXT)</option>
+          <option value="INT">Angka Bulat (INT)</option>
+          <option value="DATE">Tanggal (DATE)</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+          <button id="performAddColumnBtn" class="action-btn" style="background-color:var(--success-color);"><i class="fas fa-check"></i> Tambah</button>
+          <button id="cancelAddColumnBtn" class="action-btn" style="background-color: #6c757d;">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Data Modal -->
+  <div id="importModal" class="modal-overlay">
+      <div class="modal-content">
+          <h3 class="modal-title"><i class="fas fa-file-excel"></i> Import Data dari Excel</h3>
+          <p class="modal-subtitle">File akan diproses di browser Anda. Pastikan kolom "ID_SISWA" ada di file Excel.</p>
+          <div class="config-group">
+              <label for="excelFileInput">Pilih File (.xlsx atau .xls)</label>
+              <input type="file" id="excelFileInput" accept=".xlsx, .xls">
+          </div>
+          <div class="progress-bar-container" style="display: none;">
+              <div id="importProgressBar" class="progress-bar">0%</div>
+          </div>
+          <div id="importLog">
+              <p>Menunggu file dipilih...</p>
+              <p><strong>Penting:</strong></p>
+              <ul>
+                  <li>Baris pertama file harus berisi header kolom.</li>
+                  <li>Kolom akan otomatis ditambahkan ke database jika belum ada.</li>
+                  <li>Data akan diperbarui/ditambahkan berdasarkan `ID_SISWA`.</li>
+              </ul>
+          </div>
+          <div class="modal-buttons">
+              <button id="cancelImportBtn" class="action-btn" style="background-color: #6c757d;">Tutup</button>
+          </div>
+      </div>
+  </div>
+
+  <script src="form-settings.js"></script>
+</body>
+</html>
