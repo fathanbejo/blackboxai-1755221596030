@@ -824,6 +824,303 @@ try {
             } catch (Exception $e) { $conn->rollback(); send_response(false, null, 'Gagal mengimpor: ' . $e->getMessage()); }
             break;
 
+        // ========================================================
+        // ENDPOINTS: KALENDER & AGENDA
+        // ========================================================
+        case 'getCalendarData':
+            $year = $_GET['year'] ?? date('Y');
+            $month = $_GET['month'] ?? date('m');
+            
+            // Get holidays (you can integrate with holiday API or use static data)
+            $holidays = [];
+            
+            // Get custom agendas
+            $agendas = [];
+            $agenda_result = $conn->query("SELECT * FROM agenda WHERE YEAR(agenda_date) = $year AND MONTH(agenda_date) = $month ORDER BY agenda_date");
+            if ($agenda_result) {
+                while ($row = $agenda_result->fetch_assoc()) {
+                    $agendas[] = $row;
+                }
+            }
+            
+            // Get documents
+            $documents = [];
+            $doc_result = $conn->query("SELECT * FROM calendar_documents WHERE YEAR(document_date) = $year AND MONTH(document_date) = $month ORDER BY document_date");
+            if ($doc_result) {
+                while ($row = $doc_result->fetch_assoc()) {
+                    $date_key = $row['document_date'];
+                    if (!isset($documents[$date_key])) {
+                        $documents[$date_key] = [];
+                    }
+                    $documents[$date_key][] = [
+                        'id' => $row['id'],
+                        'name' => $row['document_name'],
+                        'path' => $row['document_path']
+                    ];
+                }
+            }
+            
+            send_response(true, [
+                'holidays' => $holidays,
+                'agendas' => $agendas,
+                'documents' => $documents
+            ]);
+            break;
+
+        case 'addAgenda':
+            check_permission(['admin', 'operator']);
+            $data = get_post_data();
+            $startDate = $data['startDate'];
+            $endDate = $data['endDate'] ?? null;
+            $description = $data['description'];
+            $isHoliday = $data['isHoliday'] ? 1 : 0;
+            
+            $stmt = $conn->prepare("INSERT INTO agenda (agenda_date, end_date, description, is_holiday) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param('sssi', $startDate, $endDate, $description, $isHoliday);
+            
+            if ($stmt->execute()) {
+                send_response(true, null, 'Agenda berhasil ditambahkan.');
+            } else {
+                send_response(false, null, 'Gagal menambahkan agenda: ' . $stmt->error);
+            }
+            break;
+
+        case 'updateAgenda':
+            check_permission(['admin', 'operator']);
+            $data = get_post_data();
+            $id = $data['id'];
+            $startDate = $data['startDate'];
+            $endDate = $data['endDate'] ?? null;
+            $description = $data['description'];
+            $isHoliday = $data['isHoliday'] ? 1 : 0;
+            
+            $stmt = $conn->prepare("UPDATE agenda SET agenda_date = ?, end_date = ?, description = ?, is_holiday = ? WHERE id = ?");
+            $stmt->bind_param('sssii', $startDate, $endDate, $description, $isHoliday, $id);
+            
+            if ($stmt->execute()) {
+                send_response(true, null, 'Agenda berhasil diperbarui.');
+            } else {
+                send_response(false, null, 'Gagal memperbarui agenda: ' . $stmt->error);
+            }
+            break;
+
+        case 'deleteAgenda':
+            check_permission(['admin']);
+            $data = get_post_data();
+            $id = $data['id'];
+            
+            $stmt = $conn->prepare("DELETE FROM agenda WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            
+            if ($stmt->execute()) {
+                send_response(true, null, 'Agenda berhasil dihapus.');
+            } else {
+                send_response(false, null, 'Gagal menghapus agenda: ' . $stmt->error);
+            }
+            break;
+
+        case 'saveHoliday':
+            check_permission(['admin', 'operator']);
+            $data = get_post_data();
+            $date = $data['date'];
+            $name = $data['name'];
+            
+            $stmt = $conn->prepare("INSERT INTO holidays (holiday_date, holiday_name, source) VALUES (?, ?, 'manual') ON DUPLICATE KEY UPDATE holiday_name = VALUES(holiday_name)");
+            $stmt->bind_param('ss', $date, $name);
+            
+            if ($stmt->execute()) {
+                send_response(true, null, 'Hari libur berhasil disimpan.');
+            } else {
+                send_response(false, null, 'Gagal menyimpan hari libur: ' . $stmt->error);
+            }
+            break;
+
+        case 'deleteHoliday':
+            check_permission(['admin']);
+            $data = get_post_data();
+            $date = $data['date'];
+            
+            $stmt = $conn->prepare("DELETE FROM holidays WHERE holiday_date = ?");
+            $stmt->bind_param('s', $date);
+            
+            if ($stmt->execute()) {
+                send_response(true, null, 'Hari libur berhasil dihapus.');
+            } else {
+                send_response(false, null, 'Gagal menghapus hari libur: ' . $stmt->error);
+            }
+            break;
+
+        case 'uploadDocument':
+            check_permission(['admin', 'operator']);
+            $date = $_POST['date'];
+            
+            if (!isset($_FILES['files'])) {
+                send_response(false, null, 'Tidak ada file yang diunggah.');
+            }
+            
+            $upload_dir = 'uploads/calendar/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            $uploaded_files = [];
+            foreach ($_FILES['files']['tmp_name'] as $key => $tmp_name) {
+                if ($_FILES['files']['error'][$key] === UPLOAD_ERR_OK) {
+                    $file_name = $_FILES['files']['name'][$key];
+                    $file_path = $upload_dir . time() . '_' . $file_name;
+                    
+                    if (move_uploaded_file($tmp_name, $file_path)) {
+                        $stmt = $conn->prepare("INSERT INTO calendar_documents (document_date, document_name, document_path) VALUES (?, ?, ?)");
+                        $stmt->bind_param('sss', $date, $file_name, $file_path);
+                        $stmt->execute();
+                        $uploaded_files[] = $file_name;
+                    }
+                }
+            }
+            
+            if (!empty($uploaded_files)) {
+                send_response(true, null, count($uploaded_files) . ' dokumen berhasil diunggah.');
+            } else {
+                send_response(false, null, 'Gagal mengunggah dokumen.');
+            }
+            break;
+
+        case 'deleteDocument':
+            check_permission(['admin']);
+            $data = get_post_data();
+            $id = $data['id'];
+            
+            // Get file path first
+            $stmt = $conn->prepare("SELECT document_path FROM calendar_documents WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($row = $result->fetch_assoc()) {
+                // Delete file
+                if (file_exists($row['document_path'])) {
+                    unlink($row['document_path']);
+                }
+                
+                // Delete from database
+                $delete_stmt = $conn->prepare("DELETE FROM calendar_documents WHERE id = ?");
+                $delete_stmt->bind_param('i', $id);
+                
+                if ($delete_stmt->execute()) {
+                    send_response(true, null, 'Dokumen berhasil dihapus.');
+                } else {
+                    send_response(false, null, 'Gagal menghapus dokumen dari database.');
+                }
+            } else {
+                send_response(false, null, 'Dokumen tidak ditemukan.');
+            }
+            break;
+
+        case 'importEvents':
+            check_permission(['admin']);
+            $events = get_post_data();
+            
+            if (empty($events)) {
+                send_response(false, null, 'Tidak ada data untuk diimpor.');
+            }
+            
+            $conn->begin_transaction();
+            try {
+                $stmt = $conn->prepare("INSERT INTO agenda (agenda_date, end_date, description, is_holiday) VALUES (?, ?, ?, ?)");
+                $count = 0;
+                
+                foreach ($events as $event) {
+                    $stmt->bind_param('sssi', $event['agenda_date'], $event['end_date'], $event['description'], $event['is_holiday']);
+                    if ($stmt->execute()) {
+                        $count++;
+                    }
+                }
+                
+                $conn->commit();
+                send_response(true, null, "$count agenda berhasil diimpor.");
+            } catch (Exception $e) {
+                $conn->rollback();
+                send_response(false, null, 'Gagal mengimpor agenda: ' . $e->getMessage());
+            }
+            break;
+
+        // ========================================================
+        // ENDPOINTS: GURU & RAPAT
+        // ========================================================
+        case 'getGuruList':
+            $result = $conn->query("SELECT * FROM guru ORDER BY nama_guru ASC");
+            if (!$result) send_response(false, null, 'Gagal mengambil data guru: ' . $conn->error);
+            $guru_list = $result->fetch_all(MYSQLI_ASSOC);
+            send_response(true, $guru_list);
+            break;
+
+        case 'getMeetings':
+            $result = $conn->query("SELECT * FROM rapat ORDER BY tanggal DESC, waktu DESC");
+            if (!$result) send_response(false, null, 'Gagal mengambil data rapat: ' . $conn->error);
+            $meetings = $result->fetch_all(MYSQLI_ASSOC);
+            send_response(true, $meetings);
+            break;
+
+        case 'getActiveMeetings':
+            $result = $conn->query("SELECT * FROM rapat WHERE status = 'active' ORDER BY tanggal DESC, waktu DESC");
+            if (!$result) send_response(false, null, 'Gagal mengambil data rapat aktif: ' . $conn->error);
+            $meetings = $result->fetch_all(MYSQLI_ASSOC);
+            send_response(true, $meetings);
+            break;
+
+        case 'getAcademicYearEvents':
+            $start = $_GET['start'] ?? '';
+            $end = $_GET['end'] ?? '';
+            
+            if (empty($start) || empty($end)) {
+                send_response(false, null, 'Parameter start dan end harus diisi.');
+            }
+            
+            // Get agendas in date range
+            $agendas = [];
+            $agenda_stmt = $conn->prepare("SELECT * FROM agenda WHERE agenda_date BETWEEN ? AND ? ORDER BY agenda_date");
+            $agenda_stmt->bind_param('ss', $start, $end);
+            $agenda_stmt->execute();
+            $agenda_result = $agenda_stmt->get_result();
+            while ($row = $agenda_result->fetch_assoc()) {
+                $agendas[] = $row;
+            }
+            
+            // Get holidays in date range
+            $holidays = [];
+            $holiday_stmt = $conn->prepare("SELECT * FROM holidays WHERE holiday_date BETWEEN ? AND ? ORDER BY holiday_date");
+            $holiday_stmt->bind_param('ss', $start, $end);
+            $holiday_stmt->execute();
+            $holiday_result = $holiday_stmt->get_result();
+            while ($row = $holiday_result->fetch_assoc()) {
+                $holidays[] = $row;
+            }
+            
+            // Get documents in date range
+            $documents = [];
+            $doc_stmt = $conn->prepare("SELECT * FROM calendar_documents WHERE document_date BETWEEN ? AND ? ORDER BY document_date");
+            $doc_stmt->bind_param('ss', $start, $end);
+            $doc_stmt->execute();
+            $doc_result = $doc_stmt->get_result();
+            while ($row = $doc_result->fetch_assoc()) {
+                $date_key = $row['document_date'];
+                if (!isset($documents[$date_key])) {
+                    $documents[$date_key] = [];
+                }
+                $documents[$date_key][] = [
+                    'id' => $row['id'],
+                    'name' => $row['document_name'],
+                    'path' => $row['document_path']
+                ];
+            }
+            
+            send_response(true, [
+                'agendas' => $agendas,
+                'holidays' => $holidays,
+                'documents' => $documents
+            ]);
+            break;
+
         default:
             send_response(false, null, 'Aksi tidak valid: ' . htmlspecialchars($action), 404);
             break;
